@@ -1,0 +1,137 @@
+---
+title: "Machine Learning Course Project"
+author: "Jacob M. Lundeen"
+date: "07 November 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(caret)
+library(ggplot2)
+library(rpart)
+library(rpart.plot)
+library(e1071)
+library(rattle)
+
+set.seed(1234)
+
+```
+
+## Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self-movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, we will use data from accelerometers on the belt, forearm, arm, and dumbbell of six participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways.
+
+* Class A - exactly according to the specification
+* Class B - throwing the elbows to the front
+* Class C - lifting the dumbbell only halfway
+* Class D - lowering the dumbbell only halfway
+* Class E - throwing the hips to the front
+
+Class A corresponds to the specified execution of the exercise, while the other 4 classes correspond to common mistakes. Participants were supervised by an experienced weight lifter to make sure the execution complied to the manner they were supposed to simulate. The exercises were performed by six male participants aged between 20-28 years, with little weight lifting experience. Researchers made sure that all participants could easily simulate the mistakes in a safe and controlled manner by using a relatively light dumbbell (1.25kg).
+
+### Data
+
+The training data for this project are available at:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available at:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+### Goal
+
+The goal of this project is to predict the manner in which the participants performed the exercise. This is the "classe" variable in the training set. This report will describe:
+
+* How our model was built
+* How cross-validation was used
+* The out of sample error
+
+## Data Cleaning
+
+The first step is to read in our training and testing sets. When reading in the data, we set any missing data to "NA" to ease cleaning the data. We then drop any columns that are completely empty, we drop the first seven columns because they are all unnecessary for prediction and then drop any columns that have near zero variance. We have to make sure to do all of this to both sets of data.
+
+```{r cleaning}
+
+testing <- read.csv("D:/Coursera/Repositories/Coursera_Machine_Learning_Project/pml-testing.csv", header = TRUE, sep = ',', na.strings = c("NA","#DIV/0!", ""))
+training <- read.csv("D:/Coursera/Repositories/Coursera_Machine_Learning_Project/pml-training.csv", header = TRUE, sep = ',', na.strings = c("NA","#DIV/0!", ""))
+
+training <- training[, colSums(is.na(training)) == 0]
+testing <- testing[, colSums(is.na(testing)) == 0]
+
+training <- training[, -c(1:7)]
+testing <- testing[, -c(1:7)]
+
+nearZero <- nearZeroVar(training, saveMetrics = TRUE)
+zero.Ind <- sum(nearZero$nzv)
+
+if((zero.Ind > 0))
+{
+     training <- training[, nearZero$nzv == FALSE]
+}
+
+```
+
+## Data Splitting
+
+With the data read in and cleaned, we now need to partition the training set into a training set and a validation set so we can perform our cross validation.
+
+```{r validation}
+
+inTrain <- createDataPartition(y = training$classe, p = 0.70, list = FALSE)
+
+subTrain <- training[inTrain, ]
+validation <- training[-inTrain, ]
+
+```
+
+## Model Training
+
+With our training and validation sets ready to go, we can now train our model. With wanting to be as accurate as possible, we decided to go with Random Forests as our method, with a 5-fold Cross-Validation.
+
+```{r train}
+
+controls <- trainControl(method = "cv", 5)
+
+modFit <- train(classe ~ ., data = subTrain, method = "rf", trControl = controls)
+
+modFit
+
+```
+
+## Prediction
+
+With our model built, we can now use it to predict on our training and validation sets.
+
+```{r predict}
+
+predTrain <- predict(modFit, subTrain)
+confusionMatrix(predTrain, subTrain$classe)
+
+predVal <- predict(modFit, validation)
+ValCM <- confusionMatrix(predVal, validation$classe)
+ValCM
+
+overall.accuracy <- round(ValCM$overall[['Accuracy']], 4) * 100
+
+overall.ose <- 100 - overall.accuracy
+
+```
+
+## Results
+
+As we expected, our model is very accurate with an overall accuracy of `r overall.accuracy`% and an Out of Sample Error of `r overall.ose`%. We can now run the model on our test set and see the results.
+
+```{r results}
+
+results <- predict(modFit, testing)
+
+results
+
+```
+
+# References
+Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human ’13). Stuttgart, Germany: ACM SIGCHI, 2013.
