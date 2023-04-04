@@ -1,2 +1,5 @@
-# Coursera_Machine_Learning_Project
-This repository is for Courera's Practical Machine Learning end of course project.
+# Practical Machine Learning Course Project
+This project is an end of course project for Practical Machine Learning that is 
+part of the Data Specialization course from Johns Hopkins University. It utilizes
+data collected from Bluetooth exercise devices such as Jawbone and Fitbit to 
+predict the manner in which people performed exercises.
